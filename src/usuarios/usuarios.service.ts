@@ -1,29 +1,30 @@
 
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Usuario } from './entities/usuario.entity';
 import { CrearUsuarioDto } from './dto/crear-usuario.dto';
 import { ActualizarUsuarioDto } from './dto/actualizar-usuario.dto';
+import { Usuario } from './entities/usuario.entity';
 
 @Injectable()
 export class UsuariosService {
-  constructor(
-    @InjectRepository(Usuario)
-    private readonly repo: Repository<Usuario>,
-  ) {}
+  private usuarios: Usuario[] = [];
+  private siguienteId = 1;
 
   crear(datos: CrearUsuarioDto) {
-    const usuario = this.repo.create(datos);
-    return this.repo.save(usuario);
+    const usuario = Object.assign(new Usuario(), {
+      id: this.siguienteId++,
+      ...datos,
+    });
+
+    this.usuarios.push(usuario);
+    return usuario;
   }
 
   listar() {
-    return this.repo.find();
+    return this.usuarios;
   }
 
-  async buscar(id: number) {
-    const usuario = await this.repo.findOneBy({ id });
+  buscar(id: number) {
+    const usuario = this.usuarios.find((u) => u.id === id);
 
     if (!usuario) {
       throw new NotFoundException('Usuario no encontrado');
@@ -32,15 +33,16 @@ export class UsuariosService {
     return usuario;
   }
 
-  async actualizar(id: number, datos: ActualizarUsuarioDto) {
-    const usuario = await this.buscar(id);
+  actualizar(id: number, datos: ActualizarUsuarioDto) {
+    const usuario = this.buscar(id);
     Object.assign(usuario, datos);
-    return this.repo.save(usuario);
+    return usuario;
   }
 
-  async eliminar(id: number) {
-    const usuario = await this.buscar(id);
-    await this.repo.remove(usuario);
+  eliminar(id: number) {
+    const usuario = this.buscar(id);
+    this.usuarios = this.usuarios.filter((u) => u.id !== id);
+
     return { mensaje: 'Usuario eliminado correctamente' };
   }
 }
